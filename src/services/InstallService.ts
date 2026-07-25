@@ -34,6 +34,14 @@ const TEMPLATE_MANIFEST: TemplateEntry[] = [
 		source: "agents/security-reviewer.md",
 		target: ".claude/agents/security-reviewer.md",
 	},
+	{
+		source: "agents/branch-code-reviewer.md",
+		target: ".claude/agents/branch-code-reviewer.md",
+	},
+	{
+		source: "agents/branch-security-reviewer.md",
+		target: ".claude/agents/branch-security-reviewer.md",
+	},
 	{ source: "settings/settings.json", target: ".claude/settings.json" },
 ];
 
