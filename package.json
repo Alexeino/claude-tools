@@ -1,0 +1,50 @@
+{
+	"name": "agentforge",
+	"files": [
+		"dist",
+		"README.md",
+		"LICENSE"
+	],
+	"bin": {
+		"forge": "./dist/cli.js"
+	},
+	"version": "1.0.0",
+	"description": "",
+	"scripts": {
+		"dev": "tsx src/cli.ts",
+		"build": "tsc && node scripts/copy-templates.mjs",
+		"postbuild": "chmod +x dist/cli.js",
+		"prepublishOnly": "npm run clean && npm run build",
+		"start": "node dist/cli.js",
+		"clean": "rm -rf dist",
+		"link": "npm link",
+		"format": "biome format --write .",
+		"lint": "biome lint .",
+		"check": "biome check --write ."
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/Alexeino/claude-tools.git"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"type": "module",
+	"bugs": {
+		"url": "https://github.com/Alexeino/claude-tools/issues"
+	},
+	"homepage": "https://github.com/Alexeino/claude-tools#readme",
+	"dependencies": {
+		"chalk": "^5.6.2",
+		"commander": "^15.0.0",
+		"fs-extra": "^11.4.0",
+		"ora": "^9.4.1"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.5",
+		"@types/fs-extra": "^11.0.4",
+		"@types/node": "^26.1.1",
+		"tsx": "^4.23.1",
+		"typescript": "^7.0.2"
+	}
+}
