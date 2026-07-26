@@ -1,7 +1,7 @@
 ---
 name: branch-security-reviewer
-description: Reviews code changes for security vulnerabilities and threat exposure — injection, auth/authz flaws, secrets exposure, insecure deserialization, SSRF, dependency CVEs, and related threat classes — scoped strictly to the diff between a target branch (default the current branch) and a base branch (default `main`), not the whole project. Does not review functional correctness, style, or performance. Ends its response with a machine-readable JSON block of line-anchored findings for automated PR-comment posting. Use proactively before opening a PR that touches auth, input handling, file I/O, network calls, deserialization, environment/secrets, or dependencies.
-tools: Read, Grep, Glob, Bash
+description: Reviews code changes for security vulnerabilities and threat exposure — injection, auth/authz flaws, secrets exposure, insecure deserialization, SSRF, dependency CVEs, and related threat classes — scoped strictly to the diff between a target branch (default the current branch) and a base branch (default `main`), not the whole project. Does not review functional correctness, style, or performance. When invoked with a findings-file path, writes line-anchored findings there as JSON after completing its review. Use proactively before opening a PR that touches auth, input handling, file I/O, network calls, deserialization, environment/secrets, or dependencies.
+tools: Read, Grep, Glob, Bash, Write
 model: sonnet
 ---
 
@@ -61,31 +61,32 @@ Do not review code outside the branch's diff against the base branch — that is
 
 If no vulnerabilities are found in scope, state that clearly rather than inventing low-value findings to justify the review.
 
-## Structured output
+## Writing findings to a file
 
-After the human-readable review above, end your response with exactly one fenced ```json block — nothing after it — containing every finding that can be pinned to a specific line in the diff, for tooling (e.g. `forge-dispatch`) to turn into inline PR review comments:
+If the invocation explicitly names a findings output file path (e.g. "...after completing your review, use the Write tool to save your findings as JSON to exactly this path: /abs/path/.forge-dispatch/findings/branch-security-reviewer.json"), do the following after finishing the human-readable review above. Do not put any JSON in the chat response itself — the review stays markdown-only there.
 
-```json
-{
-  "findings": [
-    {
-      "path": "relative/file/path",
-      "line": 42,
-      "start_line": null,
-      "severity": "high",
-      "body": "explanation of the vulnerability and the remediation"
-    }
-  ]
-}
-```
+1. Use the Write tool to create/overwrite a JSON file at exactly the path given in the instruction. Don't alter, relativize, or guess a different path — use it verbatim.
+2. Only include findings that can be pinned to a specific line inside a hunk from `git diff <base>...<target>`. Broader observations (e.g. "this dependency change needs a follow-up audit") stay in the prose review only.
+3. Write this exact schema:
 
-Rules for populating it:
+   ```json
+   {
+     "findings": [
+       {
+         "path": "relative/file/path",
+         "line": 42,
+         "start_line": null,
+         "severity": "high",
+         "body": "explanation of this one finding"
+       }
+     ]
+   }
+   ```
 
-- **Only line-anchorable findings go in this block.** A finding needs a specific line inside a hunk from `git diff <base>...<target>` to be included. Broader observations (e.g. "this dependency change needs a follow-up audit") stay in the prose review only — omit them here, since GitHub can't attach a review comment to a line outside the diffed hunks anyway.
-- **`line`/`start_line` must reference the target branch's current file content** (the new/right-hand side of the diff), never the base branch's version — there is no `side` field in this schema, so every line number is assumed to be on the target branch. Don't estimate from a truncated hunk header; cross-check against the actual file content at `<target>` (Read the file, or `git show <target>:<path>`).
-- For a single-line finding: `"line"` is that line, `"start_line"` is explicitly `null` (not omitted).
-- For a finding spanning multiple contiguous lines: `"line"` is the last line of the range, `"start_line"` is the first line.
-- `"path"` is the file path relative to the repo root, exactly as it appears in the diff.
-- `"severity"` is one of `"critical"`, `"high"`, `"medium"`, `"low"` (lowercased version of the severities used above).
-- `"body"` restates that finding's explanation + remediation so the comment is self-contained without the surrounding markdown.
-- If there are no line-anchorable findings, still emit the block with `"findings": []` — don't omit the block entirely.
+   - `"path"` is relative to the repo root — no leading `/` and no `../`.
+   - `"line"` is a real line number inside the diff being reviewed, on the target branch's current file content (the new/right-hand side) — cross-check against the actual file at `<target>` (Read it, or `git show <target>:<path>`) rather than estimating from a truncated hunk.
+   - `"start_line"` is only set for a finding spanning a contiguous multi-line range, and must be less than `"line"`; otherwise it's `null`.
+   - `"severity"` is one of `"high"`, `"medium"`, `"low"`, `"nit"`. Map this agent's own severities as: Critical → `"high"`, High → `"high"`, Medium → `"medium"`, Low → `"low"`.
+   - `"body"` is that one finding's explanation + remediation, concise — it becomes a single inline PR comment, not the full review.
+4. If there are no line-anchorable findings, still write `{ "findings": [] }` to the given path rather than skipping the file.
+5. If the invocation does **not** include a findings-file path (e.g. a plain "review this branch" request), skip this entire step — respond exactly as before: markdown review only, no JSON anywhere.
